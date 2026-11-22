@@ -33,6 +33,12 @@ function friendlyAuthError(error: unknown): string {
       return 'An account with this email already exists. Try signing in.';
     case 'auth/weak-password':
       return 'Password must be at least 6 characters.';
+    case 'auth/operation-not-allowed':
+      return 'Email/password sign-in is not enabled yet. Please contact support or use Google sign-in on desktop.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid Gmail address.';
+    case 'auth/network-request-failed':
+      return 'Network error. Check your connection and try again.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.';
     default:
