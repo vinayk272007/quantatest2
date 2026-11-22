@@ -3,8 +3,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Email + password accounts must use a real-looking Gmail address (mirrors src/lib/emailValidation.ts).
+    // Google sign-in accounts are verified by Google and are not affected.
+    function validPasswordEmail() {
+      let email = request.auth.token.email.lower();
+      let localPart = email.split('@')[0].replace('\\.', '');
+      return email.matches('^[a-z0-9]([.]?[a-z0-9])*@gmail[.]com$')
+        && localPart.size() >= 6
+        && localPart.size() <= 30
+        && !localPart.matches('^[0-9]*[a-z]?[0-9]*$')
+        && !localPart.matches('.*[0-9]{9,}.*')
+        && !localPart.matches('^(test|temp|tmp|fake|dummy|demo|sample|xyz).*')
+        && !localPart.matches('.*(tempmail|tmpmail|throwaway|disposable|burner|fakemail|fakeemail|spam|trashmail|junkmail|mailinator|10minute|guerrilla|yopmail|noreply|donotreply|asdf|qwerty|zxcvb|abcdef|1234567).*');
+    }
+
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && (request.auth.token.firebase.sign_in_provider != 'password'
+          || (request.auth.token.email is string && validPasswordEmail()));
     }
 
     function isAdmin() {

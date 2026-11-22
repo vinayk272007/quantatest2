@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { checkGmail } from '@/lib/emailValidation';
 import { useToast } from '@/context/ToastContext';
 import { APP_NAME, TAGLINE } from '@/lib/constants';
 import { errorMessage } from '@/lib/utils';
@@ -40,7 +41,7 @@ function friendlyAuthError(error: unknown): string {
 }
 
 export function LoginPage() {
-  const { firebaseUser, loading, signIn, signInWithEmail, signUpWithEmail } = useAuth();
+  const { firebaseUser, loading, signIn, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,12 +71,12 @@ export function LoginPage() {
 
   const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const trimmed = email.trim().toLowerCase();
-
-    if (!trimmed.endsWith('@gmail.com')) {
-      toast.error('Invalid email', 'Please use your Gmail address (ending in @gmail.com).');
+    const check = checkGmail(email);
+    if (!check.ok) {
+      toast.error('Email not allowed', check.reason);
       return;
     }
+    const trimmed = check.email;
     if (password.length < 6) {
       toast.error('Weak password', 'Password must be at least 6 characters.');
       return;
@@ -96,6 +97,20 @@ export function LoginPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    const check = checkGmail(email);
+    if (!check.ok) {
+      toast.error('Enter your Gmail first', check.reason);
+      return;
+    }
+    try {
+      await resetPassword(check.email);
+      toast.success('Check your inbox', `If an account exists for ${check.email}, we sent a link to set a new password.`);
+    } catch (error) {
+      toast.error('Could not send reset email', friendlyAuthError(error));
+    }
+  };
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl items-center px-4 py-12 sm:px-6">
       <div className="grid w-full items-center gap-10 md:grid-cols-2">
@@ -109,7 +124,7 @@ export function LoginPage() {
             <li className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-accent-700" />
               <span className="hidden md:inline">Sign in with your Google account only</span>
-              <span className="md:hidden">Sign in with Google or your Gmail and password</span>
+              <span className="md:hidden">Sign in with your Gmail and password</span>
             </li>
             <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-accent-700" /> Your progress is saved automatically</li>
           </ul>
@@ -119,14 +134,17 @@ export function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {mode === 'signin' ? 'Welcome back' : 'Create your account'}
           </h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-2 hidden text-sm text-slate-600 dark:text-slate-400 md:block">
             Continue with the Google account you want to use for tests.
+          </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 md:hidden">
+            Use your real Gmail address and a password. Temporary or fake emails are not accepted.
           </p>
 
           <Button
             variant="outline"
             size="lg"
-            className="mt-8 w-full gap-3 border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:bg-slate-900"
+            className="mt-8 hidden w-full gap-3 border-slate-300 md:flex bg-white text-slate-800 hover:bg-slate-50 dark:bg-slate-900"
             onClick={() => void handleSignIn()}
             loading={submitting}
           >
@@ -134,14 +152,8 @@ export function LoginPage() {
             Continue with Google
           </Button>
 
-          {/* Mobile-only: Gmail + password */}
-          <div className="md:hidden">
-            <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-              or
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-            </div>
-
+          {/* Mobile-only: Gmail + password (Google sign-in is desktop-only) */}
+          <div className="mt-8 md:hidden">
             <form onSubmit={(e) => void handleEmailSubmit(e)} className="space-y-3">
               <input
                 type="email"
@@ -167,6 +179,16 @@ export function LoginPage() {
                 {mode === 'signin' ? 'Sign in' : 'Create account'}
               </Button>
             </form>
+
+            {mode === 'signin' && (
+              <button
+                type="button"
+                onClick={() => void handleResetPassword()}
+                className="mt-3 w-full text-center text-xs text-slate-500 hover:underline dark:text-slate-400"
+              >
+                Forgot password? (Signed up with Google before? Use this to set a password.)
+              </button>
+            )}
 
             <button
               type="button"

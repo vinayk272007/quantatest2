@@ -204,7 +204,7 @@ export function PremiumPage() {
               {/* QR + UPI ID */}
               <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
                 <div className="rounded-xl bg-white p-3">
-                  <QRCodeSVG value={upiString} size={180} includeLevel={false} />
+                  <QRCodeSVG value={upiString} size={180} />
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
