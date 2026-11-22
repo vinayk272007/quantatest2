@@ -1,11 +1,16 @@
 // Cloudflare Pages function — proxies email sends to the Resend API.
-// Only RESEND_API_KEY is needed (set in Cloudflare Pages environment variables).
-// Returns 503 if the key is missing so the client can handle gracefully.
+// Set RESEND_API_KEY in Cloudflare Pages → Settings → Environment variables.
+// Cloudflare passes env vars via the `env` argument, NOT process.env or globalThis.
 
 interface SendEmailBody {
   to: string;
   subject: string;
   html: string;
+}
+
+interface CloudflareEnv {
+  RESEND_API_KEY: string;
+  RESEND_FROM_EMAIL?: string;
 }
 
 const corsHeaders = {
@@ -14,14 +19,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export const onRequestPost: PagesFunction = async ({ request }) => {
+export const onRequestPost: PagesFunction<CloudflareEnv> = async ({ request, env }) => {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const apiKey = (request as unknown as { RESEND_API_KEY?: string }).RESEND_API_KEY
-    ?? (globalThis as Record<string, unknown>).RESEND_API_KEY as string | undefined;
-
+  const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Email service is not configured.' }), {
       status: 503,
@@ -38,7 +41,7 @@ export const onRequestPost: PagesFunction = async ({ request }) => {
       });
     }
 
-    const fromEmail = (globalThis as Record<string, unknown>).RESEND_FROM_EMAIL as string | undefined ?? 'onboarding@resend.dev';
+    const fromEmail = env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
     const fromName = 'QuantaPrep';
 
     const resendResponse = await fetch('https://api.resend.com/emails', {

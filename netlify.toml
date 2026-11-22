@@ -1,0 +1,18 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+# Proxy /api/send-email to the Netlify function
+[[redirects]]
+  from = "/api/send-email"
+  to = "/.netlify/functions/send-email"
+  status = 200
+
+# SPA fallback — all client routes served by index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
