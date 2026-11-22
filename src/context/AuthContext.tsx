@@ -1,7 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
+import { checkGmail } from '@/lib/emailValidation';
 import { ADMIN_EMAIL, REFERRAL_QUERY_KEY } from '@/lib/constants';
 import type { UserProfile } from '@/lib/types';
 import { ensureReferralCode, ensureUserProfile, toUserProfile } from '@/services/userService';
@@ -32,6 +41,9 @@ interface AuthContextValue {
   loading: boolean;
   isAdmin: boolean;
   signIn: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -99,6 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: firebaseUser?.email === ADMIN_EMAIL && firebaseUser.emailVerified === true,
       signIn: async () => {
         await signInWithPopup(auth, googleProvider);
+      },
+      signInWithEmail: async (email: string, password: string) => {
+        await signInWithEmailAndPassword(auth, email, password);
+      },
+      signUpWithEmail: async (email: string, password: string) => {
+        const check = checkGmail(email);
+        if (!check.ok) throw new Error(check.reason);
+        await createUserWithEmailAndPassword(auth, check.email, password);
+      },
+      resetPassword: async (email: string) => {
+        await sendPasswordResetEmail(auth, email);
       },
       signOutUser: async () => {
         await signOut(auth);
